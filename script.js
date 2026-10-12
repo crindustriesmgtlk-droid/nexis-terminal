@@ -1333,12 +1333,14 @@ function updateHeroLiveQuotes() { /* hero chips now use TradingView widgets */ }
 function loadTradingViewTicker() {
   const S = [['OANDA:XAUUSD', 'Gold'], ['OANDA:XAGUSD', 'Silver'], ['TVC:USOIL', 'WTI Oil'], ['TVC:UKOIL', 'Brent Oil'],
     ['FX:EURUSD', 'EUR/USD'], ['FX:GBPUSD', 'GBP/USD'], ['FX:USDJPY', 'USD/JPY'], ['FX:USDCHF', 'USD/CHF'], ['FX:AUDUSD', 'AUD/USD'],
-    ['FX_IDC:USDLKR', 'USD/LKR'], ['TVC:DXY', 'US Dollar Index'], ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'],
+    ['FX_IDC:USDLKR', 'USD/LKR'], ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'],
     ['FOREXCOM:DJI', 'Dow Jones'], ['FOREXCOM:GRXEUR', 'DAX 40'], ['BINANCE:BTCUSDT', 'Bitcoin'], ['BINANCE:ETHUSDT', 'Ethereum'],
     ['BINANCE:SOLUSDT', 'Solana'], ['TVC:US10Y', 'US 10Y Yield']];
   tvEmbed('tv-ticker-tape-container', 'ticker-tape', { symbols: S.map(([proName, title]) => ({ proName, title })), showSymbolLogo: true, colorTheme: 'dark', isTransparent: true, displayMode: 'regular', locale: 'en' });
 }
 document.addEventListener('DOMContentLoaded', () => {
-  [['hero-chip-btc', 'BINANCE:BTCUSDT'], ['hero-chip-eth', 'BINANCE:ETHUSDT'], ['hero-chip-gold', 'OANDA:XAUUSD'], ['hero-chip-eur', 'FX:EURUSD'], ['hero-chip-wti', 'TVC:USOIL'], ['hero-chip-spx', 'FOREXCOM:SPXUSD']]
-    .forEach(([id, symbol]) => tvEmbed(id, 'single-quote', { symbol, width: '100%', colorTheme: 'dark', isTransparent: true, locale: 'en' }));
+  // Chips use the same ticker widget as the top bar (reliable), staggered so TradingView is not hit all at once
+  [['hero-chip-btc', 'BINANCE:BTCUSDT', 'Bitcoin'], ['hero-chip-gold', 'OANDA:XAUUSD', 'Gold'], ['hero-chip-wti', 'TVC:USOIL', 'WTI Oil'],
+   ['hero-chip-eth', 'BINANCE:ETHUSDT', 'Ethereum'], ['hero-chip-spx', 'FOREXCOM:SPXUSD', 'S&P 500'], ['hero-chip-eur', 'FX:EURUSD', 'EUR/USD']]
+    .forEach(([id, proName, title], i) => setTimeout(() => tvEmbed(id, 'ticker-tape', { symbols: [{ proName, title }], showSymbolLogo: true, colorTheme: 'dark', isTransparent: true, displayMode: 'adaptive', locale: 'en' }), 1200 + i * 350));
 });
