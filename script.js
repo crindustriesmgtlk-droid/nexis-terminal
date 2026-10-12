@@ -1336,11 +1336,11 @@ function loadTradingViewTicker() {
     ['FX_IDC:USDLKR', 'USD/LKR'], ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'],
     ['FOREXCOM:DJI', 'Dow Jones'], ['FOREXCOM:GRXEUR', 'DAX 40'], ['BINANCE:BTCUSDT', 'Bitcoin'], ['BINANCE:ETHUSDT', 'Ethereum'],
     ['BINANCE:SOLUSDT', 'Solana'], ['TVC:US10Y', 'US 10Y Yield']];
-  tvEmbed('tv-ticker-tape-container', 'ticker-tape', { symbols: S.map(([proName, title]) => ({ proName, title })), showSymbolLogo: true, colorTheme: 'dark', isTransparent: true, displayMode: 'regular', locale: 'en' });
+  tvEmbed('tv-ticker-tape-container', 'ticker-tape', { symbols: S.map(([proName, title]) => ({ proName, title })), showSymbolLogo: false, colorTheme: 'dark', isTransparent: true, displayMode: 'adaptive', locale: 'en' });
 }
 document.addEventListener('DOMContentLoaded', () => {
-  // Chips use the same ticker widget as the top bar (reliable), staggered so TradingView is not hit all at once
-  [['hero-chip-btc', 'BINANCE:BTCUSDT', 'Bitcoin'], ['hero-chip-gold', 'OANDA:XAUUSD', 'Gold'], ['hero-chip-wti', 'TVC:USOIL', 'WTI Oil'],
-   ['hero-chip-eth', 'BINANCE:ETHUSDT', 'Ethereum'], ['hero-chip-spx', 'FOREXCOM:SPXUSD', 'S&P 500'], ['hero-chip-eur', 'FX:EURUSD', 'EUR/USD']]
-    .forEach(([id, proName, title], i) => setTimeout(() => tvEmbed(id, 'ticker-tape', { symbols: [{ proName, title }], showSymbolLogo: true, colorTheme: 'dark', isTransparent: true, displayMode: 'adaptive', locale: 'en' }), 1200 + i * 350));
+  // Same widget + container pattern as the home cards (known to work); staggered so TradingView is not hit all at once
+  [['hero-chip-btc', 'BINANCE:BTCUSDT'], ['hero-chip-gold', 'OANDA:XAUUSD'], ['hero-chip-wti', 'TVC:USOIL'],
+   ['hero-chip-eth', 'BINANCE:ETHUSDT'], ['hero-chip-spx', 'FOREXCOM:SPXUSD'], ['hero-chip-eur', 'FX:EURUSD']]
+    .forEach(([id, symbol], i) => setTimeout(() => tvEmbed(id, 'single-quote', { symbol, width: '100%', colorTheme: 'dark', isTransparent: true, locale: 'en' }), 600 + i * 300));
 });
