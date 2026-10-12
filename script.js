@@ -738,7 +738,7 @@ function updateVolumeWave(hour) {
 }
 function moveTimelinePin(e) {
   if (!isDragging) return;
-  const c = document.getElementById('timeline-scroll-container'); if (!c) return;
+  const c = document.getElementById('timeline-inner'); if (!c) return;
   const r = c.getBoundingClientRect(), x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left - 144;
   customTimelineHour = Math.max(0, Math.min(1, x / (r.width - 144))) * 24;
   updateMarketSessions();
@@ -951,7 +951,7 @@ function toggleMobileMenu(e) {
 }
 function closeMobileMenu() {
   const nav = document.getElementById('main-nav');
-  if (nav && window.innerWidth < 1024 && !nav.classList.contains('hidden')) toggleMobileMenu();
+  if (nav && window.innerWidth < 1280 && !nav.classList.contains('hidden')) toggleMobileMenu();
 }
 (function wrapSwitchPage() {
   const base = switchPage;
@@ -959,7 +959,7 @@ function closeMobileMenu() {
 })();
 window.addEventListener('resize', () => {
   const nav = document.getElementById('main-nav'); if (!nav) return;
-  if (window.innerWidth >= 1024) { MOBILE_NAV_CLASSES.forEach(c => nav.classList.remove(c)); nav.classList.add('hidden'); }
+  if (window.innerWidth >= 1280) { MOBILE_NAV_CLASSES.forEach(c => nav.classList.remove(c)); nav.classList.add('hidden'); }
 });
 
 const TD_SYMBOLS = { 'EUR / USD': 'EUR/USD', 'GBP / USD': 'GBP/USD', 'USD / JPY': 'USD/JPY', 'Gold Spot (XAU/USD)': 'XAU/USD', 'Silver Spot (XAG/USD)': 'XAG/USD' };
@@ -1331,11 +1331,12 @@ let _ecoInit = false;
 // ============================================================================
 function updateHeroLiveQuotes() { /* hero chips now use TradingView widgets */ }
 function loadTradingViewTicker() {
-  const S = [['OANDA:XAUUSD', 'Gold'], ['OANDA:XAGUSD', 'Silver'], ['TVC:USOIL', 'WTI Oil'], ['TVC:UKOIL', 'Brent Oil'],
-    ['FX:EURUSD', 'EUR/USD'], ['FX:GBPUSD', 'GBP/USD'], ['FX:USDJPY', 'USD/JPY'], ['FX:USDCHF', 'USD/CHF'], ['FX:AUDUSD', 'AUD/USD'],
-    ['FX_IDC:USDLKR', 'USD/LKR'], ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'],
-    ['FOREXCOM:DJI', 'Dow Jones'], ['FOREXCOM:GRXEUR', 'DAX 40'], ['BINANCE:BTCUSDT', 'Bitcoin'], ['BINANCE:ETHUSDT', 'Ethereum'],
-    ['BINANCE:SOLUSDT', 'Solana'], ['TVC:US10Y', 'US 10Y Yield']];
+  const S = [['OANDA:XAUUSD', 'Gold'], ['OANDA:XAGUSD', 'Silver'], ['TVC:PLATINUM', 'Platinum'], ['COMEX:HG1!', 'Copper'], ['TVC:USOIL', 'WTI Oil'], ['TVC:UKOIL', 'Brent Oil'], ['NYMEX:NG1!', 'Natural Gas'],
+    ['FX:EURUSD', 'EUR/USD'], ['FX:GBPUSD', 'GBP/USD'], ['FX:USDJPY', 'USD/JPY'], ['FX:USDCHF', 'USD/CHF'], ['FX:AUDUSD', 'AUD/USD'], ['FX:USDCAD', 'USD/CAD'], ['OANDA:NZDUSD', 'NZD/USD'],
+    ['FX:EURGBP', 'EUR/GBP'], ['FX:EURJPY', 'EUR/JPY'], ['FX:GBPJPY', 'GBP/JPY'], ['FX_IDC:USDLKR', 'USD/LKR'], ['FX_IDC:USDINR', 'USD/INR'],
+    ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'], ['FOREXCOM:DJI', 'Dow Jones'], ['FOREXCOM:GRXEUR', 'DAX 40'], ['TVC:UKX', 'FTSE 100'], ['TVC:NI225', 'Nikkei 225'], ['TVC:HSI', 'Hang Seng'],
+    ['BINANCE:BTCUSDT', 'Bitcoin'], ['BINANCE:ETHUSDT', 'Ethereum'], ['BINANCE:BNBUSDT', 'BNB'], ['BINANCE:SOLUSDT', 'Solana'], ['BINANCE:XRPUSDT', 'XRP'],
+    ['TVC:US10Y', 'US 10Y Yield'], ['NASDAQ:AAPL', 'Apple'], ['NASDAQ:NVDA', 'Nvidia'], ['NASDAQ:TSLA', 'Tesla']];
   tvEmbed('tv-ticker-tape-container', 'ticker-tape', { symbols: S.map(([proName, title]) => ({ proName, title })), showSymbolLogo: false, colorTheme: 'dark', isTransparent: true, displayMode: 'adaptive', locale: 'en' });
 }
 document.addEventListener('DOMContentLoaded', () => {
@@ -1344,3 +1345,9 @@ document.addEventListener('DOMContentLoaded', () => {
    ['hero-chip-eth', 'BINANCE:ETHUSDT'], ['hero-chip-spx', 'FOREXCOM:SPXUSD'], ['hero-chip-eur', 'FX:EURUSD']]
     .forEach(([id, symbol], i) => setTimeout(() => tvEmbed(id, 'single-quote', { symbol, width: '100%', colorTheme: 'dark', isTransparent: true, locale: 'en' }), 600 + i * 300));
 });
+
+// ---- Touch: only the pin starts a drag, so the timeline can still be scrolled sideways on phones ----
+(function wrapDrag() {
+  const base = startDragTimeline;
+  startDragTimeline = function (e) { if (e.touches && !(e.target.closest && e.target.closest('#draggable-time-pin'))) return; base(e); };
+})();
