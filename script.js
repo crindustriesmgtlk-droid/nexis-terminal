@@ -1351,3 +1351,59 @@ document.addEventListener('DOMContentLoaded', () => {
   const base = startDragTimeline;
   startDragTimeline = function (e) { if (e.touches && !(e.target.closest && e.target.closest('#draggable-time-pin'))) return; base(e); };
 })();
+
+// ============================================================================
+// CURRENCY PAGE: ExchangeRate-API through the /api/fx proxy (key stays on the server)
+// ============================================================================
+const FX = { rates: null, names: {}, loading: false };
+const FX_LKR_LIST = ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'JPY', 'INR', 'AED', 'SGD', 'SAR', 'QAR', 'KWD', 'CHF', 'CNY', 'MYR', 'THB', 'NZD', 'HKD'];
+const fxConv = (amt, f, t) => amt * FX.rates[t] / FX.rates[f];
+const fxFmt = v => nfmt(v, v >= 100 ? 2 : v >= 1 ? 3 : v >= 0.01 ? 4 : 6);
+function fxOptions(sel, def) {
+  const el = document.getElementById(sel); if (!el) return;
+  el.innerHTML = Object.keys(FX.rates).sort().map(c => `<option value="${esc(c)}">${esc(c)} – ${esc(FX.names[c] || '')}</option>`).join('');
+  el.value = def;
+}
+async function loadFx() {
+  if (FX.rates || FX.loading) return;
+  FX.loading = true;
+  const up = document.getElementById('fx-updated');
+  try {
+    const [l, c] = await Promise.all([fetch('/api/fx?type=latest').then(r => r.json()), fetch('/api/fx?type=codes').then(r => r.json()).catch(() => ({}))]);
+    if (!l.conversion_rates) throw new Error(l.error || 'no data');
+    FX.rates = l.conversion_rates;
+    (c.supported_codes || []).forEach(([code, name]) => FX.names[code] = name);
+    fxOptions('fx-from', 'USD'); fxOptions('fx-to', 'LKR'); fxOptions('fx-base', 'USD');
+    if (up) up.innerText = 'Updated: ' + String(l.time_last_update_utc || '').replace(' +0000', ' UTC');
+    runFx(); renderFxLkr(); renderFxTable();
+  } catch (e) {
+    const msg = String(e.message || '');
+    if (up) up.innerText = msg.includes('not set') ? 'Currency data is not connected yet (EXCHANGERATE_API_KEY missing on the server).' : 'Currency data is unavailable right now. Try again later.';
+  }
+  FX.loading = false;
+}
+function runFx() {
+  if (!FX.rates) return;
+  const amt = parseFloat(document.getElementById('fx-amount').value) || 0, f = document.getElementById('fx-from').value, t = document.getElementById('fx-to').value;
+  document.getElementById('fx-result').innerText = `${nfmt(amt, 2)} ${f} = ${nfmt(fxConv(amt, f, t), 2)} ${t}`;
+  document.getElementById('fx-rate-line').innerText = `1 ${f} = ${fxFmt(fxConv(1, f, t))} ${t}   •   1 ${t} = ${fxFmt(fxConv(1, t, f))} ${f}`;
+}
+function swapFx() {
+  const a = document.getElementById('fx-from'), b = document.getElementById('fx-to'), v = a.value; a.value = b.value; b.value = v; runFx();
+}
+function renderFxLkr() {
+  const g = document.getElementById('fx-lkr-grid'); if (!g || !FX.rates.LKR) return;
+  g.innerHTML = FX_LKR_LIST.filter(c => FX.rates[c]).map(c => `<div class="p-3 bg-[#0d1117] rounded-xl border border-[#30363d] cursor-pointer hover:border-cyan-400 transition" onclick="document.getElementById('fx-from').value='${c}';document.getElementById('fx-to').value='LKR';runFx();window.scrollTo({top:0,behavior:'smooth'})"><div class="text-[10px] text-slate-400">1 ${c}</div><div class="text-base font-extrabold text-amber-300 mt-1">LKR ${fxFmt(fxConv(1, c, 'LKR'))}</div><div class="text-[9px] text-slate-500 mt-0.5">${esc(FX.names[c] || '')}</div></div>`).join('');
+}
+function renderFxTable() {
+  if (!FX.rates) return;
+  const base = document.getElementById('fx-base').value, q = (document.getElementById('fx-search').value || '').toLowerCase();
+  document.getElementById('fx-base-head').innerText = `1 ${base} =`;
+  document.getElementById('fx-table').innerHTML = Object.keys(FX.rates).sort()
+    .filter(c => !q || c.toLowerCase().includes(q) || (FX.names[c] || '').toLowerCase().includes(q))
+    .map(c => `<tr class="hover:bg-white/5"><td class="p-2.5 font-bold text-cyan-400">${esc(c)}</td><td class="p-2.5 text-slate-300">${esc(FX.names[c] || '')}</td><td class="p-2.5 text-right text-white">${fxFmt(fxConv(1, base, c))}</td></tr>`).join('');
+}
+(function wrapSwitchPageFx() {
+  const base = switchPage;
+  switchPage = function (id) { base(id); if (id === 'currency') loadFx(); };
+})();
