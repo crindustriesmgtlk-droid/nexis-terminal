@@ -1331,7 +1331,7 @@ let _ecoInit = false;
 // ============================================================================
 function updateHeroLiveQuotes() { /* hero chips now use TradingView widgets */ }
 function loadTradingViewTicker() {
-  const S = [['OANDA:XAUUSD', 'Gold'], ['OANDA:XAGUSD', 'Silver'], ['TVC:PLATINUM', 'Platinum'], ['COMEX:HG1!', 'Copper'], ['TVC:USOIL', 'WTI Oil'], ['TVC:UKOIL', 'Brent Oil'], ['NYMEX:NG1!', 'Natural Gas'],
+  const S = [['OANDA:XAUUSD', 'Gold'], ['OANDA:XAGUSD', 'Silver'], ['TVC:PLATINUM', 'Platinum'], ['OANDA:XCUUSD', 'Copper'], ['TVC:USOIL', 'WTI Oil'], ['TVC:UKOIL', 'Brent Oil'], ['OANDA:NATGASUSD', 'Natural Gas'],
     ['FX:EURUSD', 'EUR/USD'], ['FX:GBPUSD', 'GBP/USD'], ['FX:USDJPY', 'USD/JPY'], ['FX:USDCHF', 'USD/CHF'], ['FX:AUDUSD', 'AUD/USD'], ['FX:USDCAD', 'USD/CAD'], ['OANDA:NZDUSD', 'NZD/USD'],
     ['FX:EURGBP', 'EUR/GBP'], ['FX:EURJPY', 'EUR/JPY'], ['FX:GBPJPY', 'GBP/JPY'], ['FX_IDC:USDLKR', 'USD/LKR'], ['FX_IDC:USDINR', 'USD/INR'],
     ['FOREXCOM:SPXUSD', 'S&P 500'], ['FOREXCOM:NSXUSD', 'Nasdaq 100'], ['FOREXCOM:DJI', 'Dow Jones'], ['FOREXCOM:GRXEUR', 'DAX 40'], ['TVC:UKX', 'FTSE 100'], ['TVC:NI225', 'Nikkei 225'], ['TVC:HSI', 'Hang Seng'],
