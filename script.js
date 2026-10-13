@@ -1368,8 +1368,13 @@ async function loadFx() {
   if (FX.rates || FX.loading) return;
   FX.loading = true;
   const up = document.getElementById('fx-updated');
+  const get = async u => {
+    const r = await fetch(u); let j;
+    try { j = await r.json(); } catch (e) { throw new Error(r.status === 404 ? 'api/fx.js is not deployed (404)' : `server error (HTTP ${r.status})`); }
+    return j;
+  };
   try {
-    const [l, c] = await Promise.all([fetch('/api/fx?type=latest').then(r => r.json()), fetch('/api/fx?type=codes').then(r => r.json()).catch(() => ({}))]);
+    const [l, c] = await Promise.all([get('/api/fx?type=latest'), get('/api/fx?type=codes').catch(() => ({}))]);
     if (!l.conversion_rates) throw new Error(l.error || 'no data');
     FX.rates = l.conversion_rates;
     (c.supported_codes || []).forEach(([code, name]) => FX.names[code] = name);
@@ -1377,8 +1382,13 @@ async function loadFx() {
     if (up) up.innerText = 'Updated: ' + String(l.time_last_update_utc || '').replace(' +0000', ' UTC');
     runFx(); renderFxLkr(); renderFxTable();
   } catch (e) {
-    const msg = String(e.message || '');
-    if (up) up.innerText = msg.includes('not set') ? 'Currency data is not connected yet (EXCHANGERATE_API_KEY missing on the server).' : 'Currency data is unavailable right now. Try again later.';
+    const m = String(e.message || '');
+    const why = m.includes('not set') ? 'EXCHANGERATE_API_KEY is missing on the server (add it in Vercel and redeploy)'
+      : m.includes('invalid-key') ? 'ExchangeRate-API says the API key is invalid'
+      : m.includes('inactive-account') ? 'ExchangeRate-API account is inactive (confirm your email)'
+      : m.includes('quota-reached') ? 'monthly request quota reached'
+      : m;
+    if (up) up.innerText = 'Currency data unavailable: ' + why;
   }
   FX.loading = false;
 }
