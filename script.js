@@ -1417,3 +1417,58 @@ function renderFxTable() {
   const base = switchPage;
   switchPage = function (id) { base(id); if (id === 'currency') loadFx(); };
 })();
+
+// ============================================================================
+// HOME: live market sessions, headlines, quick converter
+// ============================================================================
+function fxIsOpenNow(d) {
+  const day = d.getUTCDay(), h = d.getUTCHours();
+  return !(day === 6 || (day === 5 && h >= 22) || (day === 0 && h < 22)); // forex week: Sun 22:00 UTC to Fri 22:00 UTC
+}
+function fmtDur(min) { const h = Math.floor(min / 60), m = min % 60; return h ? `${h}h ${m}m` : `${m}m`; }
+function renderHomeSessions() {
+  const box = document.getElementById('home-sessions'); if (!box) return;
+  const now = new Date(), nowM = now.getUTCHours() * 60 + now.getUTCMinutes(), weekOpen = fxIsOpenNow(now);
+  const defs = [['Sydney', 'bar-sydney-1'], ['Tokyo', 'bar-tokyo'], ['London', 'bar-london'], ['New York', 'bar-ny']];
+  box.innerHTML = defs.map(([name, key]) => {
+    const [s, e] = SESSIONS_UTC[key], st = s * 60, en = e * 60;
+    const inRange = st < en ? (nowM >= st && nowM < en) : (nowM >= st || nowM < en), open = weekOpen && inRange;
+    const detail = !weekOpen ? 'Closed (weekend)' : open ? `Closes in ${fmtDur((en - nowM + 1440) % 1440)}` : `Opens in ${fmtDur((st - nowM + 1440) % 1440)}`;
+    return `<div class="p-3 bg-[#0d1117] rounded-xl border ${open ? 'border-emerald-500/40' : 'border-[#30363d]'}"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full ${open ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}"></span><b class="text-white">${name}</b></div><div class="mt-1 ${open ? 'text-emerald-400' : 'text-slate-400'} font-bold">${open ? 'Open' : 'Closed'}</div><div class="text-[10px] text-slate-500">${detail}</div></div>`;
+  }).join('');
+  const c = document.getElementById('home-clock');
+  if (c) c.innerText = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Colombo', hour: '2-digit', minute: '2-digit', weekday: 'short' }).format(now) + ' · Colombo';
+}
+function renderHomeNews() {
+  const box = document.getElementById('home-news'); if (!box || !NEWS_STORIES.length) return;
+  box.innerHTML = NEWS_STORIES.slice(0, 5).map((n, i) => `<div class="p-3 bg-[#0d1117] rounded-xl border border-[#30363d] cursor-pointer hover:border-cyan-400 transition" onclick="openLiveArticleModal(${i})"><span class="text-[9px] mono text-slate-500">${esc(n.tag)} · ${esc(n.time)}</span><div class="font-bold text-white mt-0.5">${esc(n.title)}</div></div>`).join('');
+}
+(function wrapNewsRender() {
+  const base = renderNewsStories;
+  renderNewsStories = function () { base(); renderHomeNews(); };
+})();
+const HC_LIST = ['USD', 'LKR', 'EUR', 'GBP', 'AUD', 'JPY', 'INR', 'AED', 'SGD', 'CAD'];
+function initHomeConv() {
+  const card = document.getElementById('home-conv-card'); if (!card) return;
+  if (!FX.rates) { const n = document.getElementById('hc-note'); if (n) n.innerText = 'Currency data is not connected yet.'; return; }
+  ['hc-from', 'hc-to'].forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.innerHTML = HC_LIST.filter(c => FX.rates[c]).map(c => `<option value="${c}">${c}</option>`).join('');
+    el.value = i === 0 ? 'USD' : 'LKR';
+  });
+  runHomeConv();
+}
+function runHomeConv() {
+  if (!FX.rates) return;
+  const a = parseFloat(document.getElementById('hc-amount').value) || 0, f = document.getElementById('hc-from').value, t = document.getElementById('hc-to').value;
+  document.getElementById('hc-result').innerText = `${nfmt(a, 2)} ${f} = ${nfmt(fxConv(a, f, t), 2)} ${t}`;
+}
+(function wrapLoadFx() {
+  const base = loadFx;
+  loadFx = async function () { await base(); initHomeConv(); };
+})();
+document.addEventListener('DOMContentLoaded', () => {
+  renderHomeSessions(); setInterval(renderHomeSessions, 30000);
+  renderHomeNews();
+  loadFx();
+});
