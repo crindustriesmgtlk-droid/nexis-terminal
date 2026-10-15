@@ -1036,7 +1036,7 @@ async function handleAuthSignIn(e) {
   const email = document.getElementById('signin-user').value.trim(), password = document.getElementById('signin-pass').value;
   if (!sb) { authMsg('Login is not configured yet. Add SUPABASE_URL and SUPABASE_ANON_KEY at the top of the Phase 2 section in script.js. Your data is saved on this device for now.'); return; }
   authMsg('Please wait…');
-  const { data, error } = authMode === 'signup' ? await sb.auth.signUp({ email, password }) : await sb.auth.signInWithPassword({ email, password });
+  const { data, error } = authMode === 'signup' ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } }) : await sb.auth.signInWithPassword({ email, password });
   if (error) { authMsg(error.message); return; }
   if (authMode === 'signup' && !data.session) { authMsg('Check your email to confirm your account, then sign in.'); return; }
   authMsg(''); toggleAuthModal(false);
@@ -1134,22 +1134,37 @@ const NEWS_FEEDS = {
 };
 const stripHtml = s => { const d = document.createElement('div'); d.innerHTML = s || ''; return (d.textContent || '').trim(); };
 function relTime(s) {
-  const t = new Date(String(s).replace(' ', 'T') + 'Z'), m = Math.round((Date.now() - t) / 60000);
-  if (isNaN(m)) return 'Recent'; return m < 60 ? `${Math.max(m, 1)}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
+  const str = String(s || '');
+  const t = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(str) ? new Date(str.replace(' ', 'T') + 'Z') : new Date(str), m = Math.round((Date.now() - t) / 60000);
+  if (isNaN(m) || m < 0) return 'Recent'; return m < 60 ? `${Math.max(m, 1)}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
+}
+async function fetchFeed(ed) {
+  // 1) our own server endpoint (reliable), 2) public rss2json as a backup
+  try {
+    const r = await fetch('/api/news?ed=' + encodeURIComponent(ed)); const j = await r.json();
+    if (j.items && j.items.length) return { title: j.feed, items: j.items.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, description: i.description, thumbnail: i.image, author: i.author })) };
+  } catch (e) { }
+  const j = await (await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(NEWS_FEEDS[ed] || NEWS_FEEDS.global))).json();
+  if (j.status !== 'ok' || !j.items.length) throw new Error('bad feed');
+  return { title: j.feed.title, items: j.items.map(i => ({ ...i, thumbnail: i.thumbnail || (i.enclosure && i.enclosure.link) })) };
 }
 async function loadNews(ed) {
   const st = document.getElementById('news-sync-status'); if (st) st.innerText = 'LOADING…';
   try {
-    const j = await (await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(NEWS_FEEDS[ed] || NEWS_FEEDS.global))).json();
-    if (j.status !== 'ok' || !j.items.length) throw new Error('bad feed');
-    const list = j.items.slice(0, 7).map(i => {
+    const f = await fetchFeed(ed);
+    const list = f.items.slice(0, 7).map(i => {
       const d = stripHtml(i.description); const short = d.length > 170 ? d.slice(0, 167) + '…' : d;
-      return { tag: (j.feed.title || 'NEWS').toUpperCase().slice(0, 24), time: relTime(i.pubDate), title: i.title, author: i.author || j.feed.title, desc: short, body: short, img: i.thumbnail || (i.enclosure && i.enclosure.link) || DEFAULT_NEWS_IMG, link: i.link };
+      return { tag: (f.title || 'NEWS').toUpperCase().slice(0, 24), time: relTime(i.pubDate), title: i.title, author: i.author || f.title, desc: short, body: short, img: i.thumbnail || DEFAULT_NEWS_IMG, link: i.link };
     });
     NEWS_STORIES.splice(0, NEWS_STORIES.length, ...list);
     renderNewsHero(); renderNewsStories();
     if (st) st.innerText = 'LIVE RSS FEED';
-  } catch (e) { if (st) st.innerText = 'FEED UNAVAILABLE, SHOWING SAMPLE'; }
+  } catch (e) {
+    // No made-up stories: show a plain notice instead
+    NEWS_STORIES.splice(0, NEWS_STORIES.length, { tag: 'NEWS', time: '', title: 'News feed is unavailable right now', author: 'NEXIS', desc: 'Please try again in a few minutes or pick another edition.', body: 'The news feed could not be loaded.', img: DEFAULT_NEWS_IMG, link: '' });
+    renderNewsHero(); renderNewsStories();
+    if (st) st.innerText = 'FEED UNAVAILABLE';
+  }
 }
 function changeEdition(ed) { loadNews(ed); }
 function renderNewsHero() {
@@ -1483,7 +1498,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 }
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => tvEmbed('home-overview', 'market-overview', {
-    colorTheme: 'dark', dateRange: '1D', showChart: true, locale: 'en', width: '100%', height: '100%', isTransparent: true, showSymbolLogo: true, showFloatingTooltip: false,
+    colorTheme: 'dark', dateRange: '1D', showChart: true, locale: 'en', width: '100%', height: 460, isTransparent: true, showSymbolLogo: true, showFloatingTooltip: false,
     tabs: [
       { title: 'Indices', symbols: [{ s: 'FOREXCOM:SPXUSD', d: 'S&P 500' }, { s: 'FOREXCOM:NSXUSD', d: 'Nasdaq 100' }, { s: 'FOREXCOM:DJI', d: 'Dow Jones' }, { s: 'FOREXCOM:GRXEUR', d: 'DAX 40' }, { s: 'TVC:UKX', d: 'FTSE 100' }, { s: 'TVC:NI225', d: 'Nikkei 225' }], originalTitle: 'Indices' },
       { title: 'Forex', symbols: [{ s: 'FX:EURUSD', d: 'EUR/USD' }, { s: 'FX:GBPUSD', d: 'GBP/USD' }, { s: 'FX:USDJPY', d: 'USD/JPY' }, { s: 'FX:USDCHF', d: 'USD/CHF' }, { s: 'FX:AUDUSD', d: 'AUD/USD' }, { s: 'FX_IDC:USDLKR', d: 'USD/LKR' }], originalTitle: 'Forex' },
