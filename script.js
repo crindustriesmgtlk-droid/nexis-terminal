@@ -991,8 +991,9 @@ const TD_SYMBOLS = { 'EUR / USD': 'EUR/USD', 'GBP / USD': 'GBP/USD', 'USD / JPY'
 // ============================================================================
 
 // ---- CONFIG: paste your Supabase project values here (Project Settings > API) ----
-const SUPABASE_URL = '';
-const SUPABASE_ANON_KEY = '';
+const SUPABASE_URL = 'https://hdsgbcjrygjprjukbell.supabase.co';
+// Public anon key (safe in the browser; data is protected by row level security)
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhkc2diY2pyeWdqcHJqdWtiZWxsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwMzM5MDksImV4cCI6MjEwNzYwOTkwOX0.kPE_einvoVhz-gUedyTtwmff3BB_KHfLmJh29orkRNI';
 const sb = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1471,4 +1472,23 @@ document.addEventListener('DOMContentLoaded', () => {
   renderHomeSessions(); setInterval(renderHomeSessions, 30000);
   renderHomeNews();
   loadFx();
+});
+
+
+// ============================================================================
+// PWA offline support + home market overview
+// ============================================================================
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => { }));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => tvEmbed('home-overview', 'market-overview', {
+    colorTheme: 'dark', dateRange: '1D', showChart: true, locale: 'en', width: '100%', height: '100%', isTransparent: true, showSymbolLogo: true, showFloatingTooltip: false,
+    tabs: [
+      { title: 'Indices', symbols: [{ s: 'FOREXCOM:SPXUSD', d: 'S&P 500' }, { s: 'FOREXCOM:NSXUSD', d: 'Nasdaq 100' }, { s: 'FOREXCOM:DJI', d: 'Dow Jones' }, { s: 'FOREXCOM:GRXEUR', d: 'DAX 40' }, { s: 'TVC:UKX', d: 'FTSE 100' }, { s: 'TVC:NI225', d: 'Nikkei 225' }], originalTitle: 'Indices' },
+      { title: 'Forex', symbols: [{ s: 'FX:EURUSD', d: 'EUR/USD' }, { s: 'FX:GBPUSD', d: 'GBP/USD' }, { s: 'FX:USDJPY', d: 'USD/JPY' }, { s: 'FX:USDCHF', d: 'USD/CHF' }, { s: 'FX:AUDUSD', d: 'AUD/USD' }, { s: 'FX_IDC:USDLKR', d: 'USD/LKR' }], originalTitle: 'Forex' },
+      { title: 'Commodities', symbols: [{ s: 'OANDA:XAUUSD', d: 'Gold' }, { s: 'OANDA:XAGUSD', d: 'Silver' }, { s: 'TVC:USOIL', d: 'WTI Oil' }, { s: 'TVC:UKOIL', d: 'Brent Oil' }], originalTitle: 'Commodities' },
+      { title: 'Crypto', symbols: [{ s: 'BINANCE:BTCUSDT', d: 'Bitcoin' }, { s: 'BINANCE:ETHUSDT', d: 'Ethereum' }, { s: 'BINANCE:SOLUSDT', d: 'Solana' }, { s: 'BINANCE:BNBUSDT', d: 'BNB' }], originalTitle: 'Crypto' }
+    ]
+  }), 2500);
 });
