@@ -11,6 +11,8 @@ const decode = s => String(s || '')
   .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#8217;/g, '\u2019').replace(/&amp;/g, '&');
 const strip = s => decode(s).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+// BBC RSS thumbnails are only 240px wide; the same image is available at larger widths
+const upscale = u => String(u || '').replace(/(ichef\.bbci\.co\.uk\/(?:ace\/standard|ace\/ws|news)\/)\d+\//, '$1976/');
 const tag = (xml, name) => { const m = xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, 'i')); return m ? m[1] : ''; };
 
 module.exports = async function handler(req, res) {
@@ -24,7 +26,7 @@ module.exports = async function handler(req, res) {
     const items = (xml.match(/<item[\s>][\s\S]*?<\/item>/gi) || []).slice(0, 8).map(it => {
       const img = (it.match(/<media:thumbnail[^>]*url="([^"]+)"/i) || it.match(/<media:content[^>]*url="([^"]+)"/i) || it.match(/<enclosure[^>]*url="([^"]+)"/i) || [])[1] || '';
       const link = strip(tag(it, 'link')) || (it.match(/<link[^>]*href="([^"]+)"/i) || [])[1] || '';
-      return { title: strip(tag(it, 'title')), link, pubDate: strip(tag(it, 'pubDate')), description: strip(tag(it, 'description')).slice(0, 300), image: img, author: strip(tag(it, 'dc:creator')) };
+      return { title: strip(tag(it, 'title')), link, pubDate: strip(tag(it, 'pubDate')), description: strip(tag(it, 'description')).slice(0, 300), image: upscale(img), author: strip(tag(it, 'dc:creator')) };
     }).filter(i => i.title);
     if (!items.length) throw new Error('no items');
     res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1800');

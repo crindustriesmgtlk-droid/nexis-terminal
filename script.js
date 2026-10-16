@@ -1138,6 +1138,7 @@ function relTime(s) {
   const t = /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(str) ? new Date(str.replace(' ', 'T') + 'Z') : new Date(str), m = Math.round((Date.now() - t) / 60000);
   if (isNaN(m) || m < 0) return 'Recent'; return m < 60 ? `${Math.max(m, 1)}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`;
 }
+const upImg = u => String(u || '').replace(/(ichef\.bbci\.co\.uk\/(?:ace\/standard|ace\/ws|news)\/)\d+\//, '$1976/');
 async function fetchFeed(ed) {
   // 1) our own server endpoint (reliable), 2) public rss2json as a backup
   try {
@@ -1146,7 +1147,7 @@ async function fetchFeed(ed) {
   } catch (e) { }
   const j = await (await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(NEWS_FEEDS[ed] || NEWS_FEEDS.global))).json();
   if (j.status !== 'ok' || !j.items.length) throw new Error('bad feed');
-  return { title: j.feed.title, items: j.items.map(i => ({ ...i, thumbnail: i.thumbnail || (i.enclosure && i.enclosure.link) })) };
+  return { title: j.feed.title, items: j.items.map(i => ({ ...i, thumbnail: upImg(i.thumbnail || (i.enclosure && i.enclosure.link)) })) };
 }
 async function loadNews(ed) {
   const st = document.getElementById('news-sync-status'); if (st) st.innerText = 'LOADING…';
