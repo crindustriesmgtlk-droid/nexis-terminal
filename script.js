@@ -1157,14 +1157,14 @@ async function loadNews(ed) {
     const f = await fetchFeed(ed);
     const list = f.items.slice(0, 7).map(i => {
       const d = stripHtml(i.description); const short = d.length > 170 ? d.slice(0, 167) + '…' : d;
-      return { tag: EDITION_TAG[ed] || 'NEWS', source: i.source || SOURCE_NAME[ed] || '', time: relTime(i.pubDate), title: i.title, author: i.author || '', desc: short, body: short, img: i.thumbnail || DEFAULT_NEWS_IMG, link: i.link };
+      return { tag: EDITION_TAG[ed] || 'NEWS', source: i.source || SOURCE_NAME[ed] || '', time: relTime(i.pubDate), title: i.title, author: i.author || '', desc: short, body: short, img: i.thumbnail || '', link: i.link };
     });
     NEWS_STORIES.splice(0, NEWS_STORIES.length, ...list);
     renderNewsHero(); renderNewsStories();
     if (st) st.innerText = 'LIVE RSS FEED';
   } catch (e) {
     // No made-up stories: show a plain notice instead
-    NEWS_STORIES.splice(0, NEWS_STORIES.length, { tag: 'NEWS', time: '', title: 'News feed is unavailable right now', author: 'NEXIS', desc: 'Please try again in a few minutes or pick another edition.', body: 'The news feed could not be loaded.', img: DEFAULT_NEWS_IMG, link: '' });
+    NEWS_STORIES.splice(0, NEWS_STORIES.length, { tag: 'NEWS', time: '', title: 'News feed is unavailable right now', author: 'NEXIS', desc: 'Please try again in a few minutes or pick another edition.', body: 'The news feed could not be loaded.', img: '', link: '' });
     renderNewsHero(); renderNewsStories();
     if (st) st.innerText = 'FEED UNAVAILABLE';
   }
@@ -1174,7 +1174,13 @@ function renderNewsHero() {
   const n = NEWS_STORIES[0]; if (!n) return;
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   set('live-hero-tag', n.tag); set('live-hero-time', n.time); set('live-hero-title', n.title); set('live-hero-desc', n.desc); set('live-hero-source', n.source ? 'Source: ' + n.source : '');
-  const img = document.getElementById('live-hero-img'); if (img) { img.onerror = () => { img.onerror = null; img.src = DEFAULT_NEWS_IMG; }; img.src = n.img; }
+  const img = document.getElementById('live-hero-img');
+  if (img) {
+    // Photo belongs to the story, or no photo at all (the box shrinks to a slim bar that still carries the source credit)
+    const wrap = img.parentElement, show = ok => { img.classList.toggle('hidden', !ok); wrap.classList.toggle('h-24', !ok); wrap.classList.toggle('h-80', ok); wrap.classList.toggle('sm:h-96', ok); };
+    img.onerror = () => show(false); img.onload = () => show(true);
+    if (n.img) { show(true); img.src = n.img; } else show(false);
+  }
 }
 function renderNewsStories() {
   const sub = document.getElementById('live-subleads-grid');
@@ -1185,7 +1191,7 @@ function renderNewsStories() {
 function openLiveArticleModal(i) {
   const n = NEWS_STORIES[i]; if (!n) return;
   document.getElementById('modal-tag').textContent = `${n.tag} • ${n.time}`;
-  document.getElementById('modal-img').src = n.img;
+  const mi = document.getElementById('modal-img'); mi.onerror = () => mi.classList.add('hidden'); if (n.img) { mi.classList.remove('hidden'); mi.src = n.img; } else mi.classList.add('hidden');
   document.getElementById('modal-title').textContent = n.title;
   const b = document.getElementById('modal-body'); b.innerHTML = `<p>${esc(n.body || n.desc)}</p><p class="text-xs text-slate-500">${n.source ? 'Source: ' + esc(n.source) : ''}${n.author ? ' · ' + esc(n.author) : ''}</p>` + (n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 underline text-xs">Read the full story at the source →</a>` : '');
   document.getElementById('article-modal').classList.remove('hidden');
