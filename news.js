@@ -15,10 +15,35 @@ const strip = s => decode(s).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(
 const upscale = u => String(u || '').replace(/(ichef\.bbci\.co\.uk\/(?:ace\/standard|ace\/ws|news)\/)\d+\//, '$1976/');
 const tag = (xml, name) => { const m = xml.match(new RegExp(`<${name}[^>]*>([\\s\\S]*?)</${name}>`, 'i')); return m ? m[1] : ''; };
 
+
+// Licensed news API (NewsData.io). Used when the NEWSDATA_API_KEY environment variable is set; otherwise falls back to RSS.
+const ND_QUERY = {
+  global: 'category=business&language=en',
+  lk: 'country=lk&language=en',
+  us: 'country=us&category=business&language=en',
+  asia: 'country=in,jp,cn,sg,au&language=en',
+  eu: 'country=gb,de,fr,it,es&language=en'
+};
+async function fromNewsData(ed, key) {
+  const r = await fetch(`https://newsdata.io/api/1/latest?apikey=${encodeURIComponent(key)}&${ND_QUERY[ed] || ND_QUERY.global}`);
+  const j = await r.json();
+  if (j.status !== 'success' || !Array.isArray(j.results) || !j.results.length) throw new Error((j.results && j.results.message) || 'newsdata error');
+  const items = j.results.slice(0, 8).map(a => ({ title: a.title || '', link: a.link || '', pubDate: a.pubDate || '', description: strip(a.description || '').slice(0, 300), image: a.image_url || '', author: '', source: a.source_name || a.source_id || '' })).filter(i => i.title);
+  return { feed: 'NewsData.io', items };
+}
+
 module.exports = async function handler(req, res) {
-  const url = FEEDS[String(req.query.ed || 'global')];
+  const ed = String(req.query.ed || 'global');
+  const url = FEEDS[ed];
   if (!url) return res.status(400).json({ error: 'unknown edition' });
   try {
+    if (process.env.NEWSDATA_API_KEY) {
+      try {
+        const data = await fromNewsData(ed, process.env.NEWSDATA_API_KEY);
+        res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate=3600');
+        return res.status(200).json(data);
+      } catch (e) { /* fall through to RSS */ }
+    }
     const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NEXIS/1.0)', Accept: 'application/rss+xml, application/xml, text/xml' } });
     if (!r.ok) throw new Error('feed HTTP ' + r.status);
     const xml = await r.text();

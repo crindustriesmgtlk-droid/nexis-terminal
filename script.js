@@ -1143,19 +1143,21 @@ async function fetchFeed(ed) {
   // 1) our own server endpoint (reliable), 2) public rss2json as a backup
   try {
     const r = await fetch('/api/news?ed=' + encodeURIComponent(ed)); const j = await r.json();
-    if (j.items && j.items.length) return { title: j.feed, items: j.items.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, description: i.description, thumbnail: i.image, author: i.author })) };
+    if (j.items && j.items.length) return { title: j.feed, items: j.items.map(i => ({ title: i.title, link: i.link, pubDate: i.pubDate, description: i.description, thumbnail: i.image, author: i.author, source: i.source })) };
   } catch (e) { }
   const j = await (await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(NEWS_FEEDS[ed] || NEWS_FEEDS.global))).json();
   if (j.status !== 'ok' || !j.items.length) throw new Error('bad feed');
   return { title: j.feed.title, items: j.items.map(i => ({ ...i, thumbnail: upImg(i.thumbnail || (i.enclosure && i.enclosure.link)) })) };
 }
+const EDITION_TAG = { global: 'BUSINESS', lk: 'SRI LANKA', us: 'WALL STREET', asia: 'ASIA-PACIFIC', eu: 'EUROPE' };
+const SOURCE_NAME = { global: 'BBC News', lk: 'EconomyNext', us: 'CNBC', asia: 'BBC News', eu: 'BBC News' };
 async function loadNews(ed) {
   const st = document.getElementById('news-sync-status'); if (st) st.innerText = 'LOADING…';
   try {
     const f = await fetchFeed(ed);
     const list = f.items.slice(0, 7).map(i => {
       const d = stripHtml(i.description); const short = d.length > 170 ? d.slice(0, 167) + '…' : d;
-      return { tag: (f.title || 'NEWS').toUpperCase().slice(0, 24), time: relTime(i.pubDate), title: i.title, author: i.author || f.title, desc: short, body: short, img: i.thumbnail || DEFAULT_NEWS_IMG, link: i.link };
+      return { tag: EDITION_TAG[ed] || 'NEWS', source: i.source || SOURCE_NAME[ed] || '', time: relTime(i.pubDate), title: i.title, author: i.author || '', desc: short, body: short, img: i.thumbnail || DEFAULT_NEWS_IMG, link: i.link };
     });
     NEWS_STORIES.splice(0, NEWS_STORIES.length, ...list);
     renderNewsHero(); renderNewsStories();
@@ -1171,7 +1173,7 @@ function changeEdition(ed) { loadNews(ed); }
 function renderNewsHero() {
   const n = NEWS_STORIES[0]; if (!n) return;
   const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-  set('live-hero-tag', n.tag); set('live-hero-time', n.time); set('live-hero-title', n.title); set('live-hero-desc', n.desc);
+  set('live-hero-tag', n.tag); set('live-hero-time', n.time); set('live-hero-title', n.title); set('live-hero-desc', n.desc); set('live-hero-source', n.source ? 'Source: ' + n.source : '');
   const img = document.getElementById('live-hero-img'); if (img) { img.onerror = () => { img.onerror = null; img.src = DEFAULT_NEWS_IMG; }; img.src = n.img; }
 }
 function renderNewsStories() {
@@ -1185,7 +1187,7 @@ function openLiveArticleModal(i) {
   document.getElementById('modal-tag').textContent = `${n.tag} • ${n.time}`;
   document.getElementById('modal-img').src = n.img;
   document.getElementById('modal-title').textContent = n.title;
-  const b = document.getElementById('modal-body'); b.innerHTML = `<p>${esc(n.body || n.desc)}</p><p class="text-xs text-slate-500">${esc(n.author)}</p>` + (n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 underline text-xs">Read the full story at the source →</a>` : '');
+  const b = document.getElementById('modal-body'); b.innerHTML = `<p>${esc(n.body || n.desc)}</p><p class="text-xs text-slate-500">${n.source ? 'Source: ' + esc(n.source) : ''}${n.author ? ' · ' + esc(n.author) : ''}</p>` + (n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer" class="text-cyan-400 underline text-xs">Read the full story at the source →</a>` : '');
   document.getElementById('article-modal').classList.remove('hidden');
 }
 
