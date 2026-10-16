@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json(data);
       } catch (e) { /* fall through to RSS */ }
     }
-    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NEXIS/1.0)', Accept: 'application/rss+xml, application/xml, text/xml' } });
+    const r = await fetch(url, { headers: { ...BROWSER_HEADERS, Accept: 'application/rss+xml, application/xml, text/xml, */*;q=0.8' } }); // browser-like headers: some feeds return 403 to unknown agents
     if (!r.ok) throw new Error('feed HTTP ' + r.status);
     const xml = await r.text();
     const channelTitle = strip(tag(xml.split(/<item[\s>]/i)[0], 'title'));
