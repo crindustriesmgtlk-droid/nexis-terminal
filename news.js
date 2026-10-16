@@ -17,19 +17,26 @@ const upscale = u => String(u || '').replace(/(ichef\.bbci\.co\.uk\/(?:ace\/stan
 // Many feeds ship no picture. For those items we read the article page and use its own preview image (og:image),
 // so the photo always belongs to that story.
 const safeUrl = u => { try { const x = new URL(u); return x.protocol === 'https:' && !/^(localhost|127\.|10\.|192\.168\.|169\.254\.)/.test(x.hostname) && x.hostname.includes('.'); } catch (e) { return false; } };
-async function ogImage(link) {
-  if (!safeUrl(link)) return '';
-  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 4000);
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9'
+};
+async function ogImage(link, dbg) {
+  const note = o => { if (dbg) dbg.push({ link, ...o }); };
+  if (!safeUrl(link)) { note({ error: 'unsafe or invalid url' }); return ''; }
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
   try {
-    const r = await fetch(link, { signal: ctl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NEXIS/1.0)' } });
-    if (!r.ok) return '';
-    const html = (await r.text()).slice(0, 200000);
-    const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image|twitter:image)["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image|twitter:image)["']/i);
+    const r = await fetch(link, { signal: ctl.signal, headers: BROWSER_HEADERS, redirect: 'follow' });
+    if (!r.ok) { note({ status: r.status }); return ''; }
+    const html = (await r.text()).slice(0, 300000);
+    const m = html.match(/<meta[^>]+(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["'][^>]*content=["']([^"']+)["']/i) || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["'](?:og:image(?::secure_url)?|twitter:image)["']/i);
+    note({ status: r.status, bytes: html.length, found: !!m });
     return m ? decode(m[1]) : '';
-  } catch (e) { return ''; } finally { clearTimeout(t); }
+  } catch (e) { note({ error: String(e.name || e.message) }); return ''; } finally { clearTimeout(t); }
 }
-async function fillImages(items) {
-  await Promise.all(items.slice(0, 6).map(async it => { if (!it.image && it.link) it.image = await ogImage(it.link); }));
+async function fillImages(items, dbg) {
+  await Promise.all(items.slice(0, 6).map(async it => { if (!it.image && it.link) it.image = await ogImage(it.link, dbg); }));
   items.forEach(it => { it.image = upscale(it.image); });
   return items;
 }
@@ -74,9 +81,10 @@ module.exports = async function handler(req, res) {
       return { title: strip(tag(it, 'title')), link, pubDate: strip(tag(it, 'pubDate')), description: strip(tag(it, 'description')).slice(0, 300), image: img, author: strip(tag(it, 'dc:creator')) };
     }).filter(i => i.title);
     if (!items.length) throw new Error('no items');
-    await fillImages(items);
-    res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1800');
-    return res.status(200).json({ feed: channelTitle, items });
+    const dbg = req.query.debug ? [] : null;
+    await fillImages(items, dbg);
+    res.setHeader('Cache-Control', dbg ? 'no-store' : 's-maxage=600, stale-while-revalidate=1800');
+    return res.status(200).json(dbg ? { feed: channelTitle, debug: dbg, items } : { feed: channelTitle, items });
   } catch (e) {
     return res.status(502).json({ error: String(e.message || 'feed failed') });
   }
